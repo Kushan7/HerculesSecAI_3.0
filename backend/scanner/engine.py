@@ -1,19 +1,16 @@
 import asyncio
-from typing import Dict
-from models.schemas import ScanReport, Vulnerability
+from models.schemas import Vulnerability
+from models.database import SessionLocal, ScanReportModel
 from scanner.plugins.headers import HeaderScanner
 from scanner.plugins.vibe_smells import VibeSmellsScanner
 from scanner.plugins.ai_judge import AIJudge
 
 class ScannerEngine:
-    def __init__(self, scan_id: str, target: str, db: Dict[str, ScanReport]):
+    def __init__(self, scan_id: str, target: str):
         self.scan_id = scan_id
         self.target = target
-        self.db = db
 
     async def run_scan(self):
-        report = self.db[self.scan_id]
-        report.status = "running"
         try:
             header_scanner = HeaderScanner(self.target)
             vibe_scanner = VibeSmellsScanner(self.target)
@@ -30,9 +27,22 @@ class ScannerEngine:
                 verified_v = await judge.verify(v)
                 verified_vulns.append(verified_v)
                 
-            report.vulnerabilities = verified_vulns
-            report.risk_score = 100 if any(v.severity == 'Critical' for v in verified_vulns) else 50
-            report.status = "completed"
+            risk_score = 100 if any(v.severity == 'Critical' for v in verified_vulns) else 50
+            
+            # Commit results securely to Database models
+            db = SessionLocal()
+            db_scan = db.query(ScanReportModel).filter(ScanReportModel.id == self.scan_id).first()
+            if db_scan:
+                db_scan.status = "completed"
+                db_scan.risk_score = risk_score
+                db_scan.report_json = {"vulnerabilities": [v.dict() for v in verified_vulns]}
+                db.commit()
+            db.close()
             
         except Exception as e:
-            report.status = "failed"
+            db = SessionLocal()
+            db_scan = db.query(ScanReportModel).filter(ScanReportModel.id == self.scan_id).first()
+            if db_scan:
+                db_scan.status = "failed"
+                db.commit()
+            db.close()

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from models.schemas import ScanRequest, ScanReport
+from models.schemas import ScanRequest, ScanReport, Vulnerability
 from scanner.engine import ScannerEngine
+from models.database import SessionLocal, ScanReportModel
 import uuid
 
 router = APIRouter()
-scans_db = {}
 
 @router.post("/scan", response_model=ScanReport)
 async def submit_scan(request: ScanRequest, background_tasks: BackgroundTasks):
@@ -14,23 +14,43 @@ async def submit_scan(request: ScanRequest, background_tasks: BackgroundTasks):
     scan_id = str(uuid.uuid4())
     target = str(request.target_url) if request.target_url else request.target_repo
     
-    report = ScanReport(
-        scan_id=scan_id,
-        status="pending",
-        target=target,
+    # Persistent Database Transaction (Replaces Python Dict)
+    db = SessionLocal()
+    db_scan = ScanReportModel(
+        id=scan_id,
+        target_url=target,
+        status="running",
         risk_score=0,
-        vulnerabilities=[]
+        report_json={}
     )
-    scans_db[scan_id] = report
+    db.add(db_scan)
+    db.commit()
+    db.close()
+
+    report = ScanReport(scan_id=scan_id, status="running", target=target, risk_score=0, vulnerabilities=[])
     
-    engine = ScannerEngine(scan_id, target, scans_db)
+    engine = ScannerEngine(scan_id, target)
     background_tasks.add_task(engine.run_scan)
     
-    report.status = "running"
     return report
 
 @router.get("/scan/{scan_id}", response_model=ScanReport)
 async def get_scan_status(scan_id: str):
-    if scan_id not in scans_db:
-        raise HTTPException(status_code=404, detail="Scan not found")
-    return scans_db[scan_id]
+    db = SessionLocal()
+    db_scan = db.query(ScanReportModel).filter(ScanReportModel.id == scan_id).first()
+    db.close()
+    
+    if not db_scan:
+        raise HTTPException(status_code=404, detail="Scan not found in database")
+    
+    vulnerabilities = []
+    if db_scan.report_json and "vulnerabilities" in db_scan.report_json:
+        vulnerabilities = [Vulnerability(**v) for v in db_scan.report_json["vulnerabilities"]]
+        
+    return ScanReport(
+        scan_id=db_scan.id,
+        status=db_scan.status,
+        target=db_scan.target_url,
+        risk_score=db_scan.risk_score,
+        vulnerabilities=vulnerabilities
+    )
