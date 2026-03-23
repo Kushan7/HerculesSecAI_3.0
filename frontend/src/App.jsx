@@ -12,7 +12,7 @@ function App() {
       <header className="header">
         <h1>
           <ShieldAlert size={36} style={{ display: 'inline', marginRight: '10px' }} />
-          VibeScanner Pro
+          HerculesSec Pro
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>
           Dual-Layer AI Security Validation for Modern Architectures

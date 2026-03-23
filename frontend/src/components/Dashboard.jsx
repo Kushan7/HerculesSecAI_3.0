@@ -49,7 +49,7 @@ export default function Dashboard({ result, onNewScan }) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `vibe-scan-${result.scan_id}.json`;
+            a.download = `herculessec-scan-${result.scan_id}.json`;
             a.click();
             URL.revokeObjectURL(url);
           }} 
