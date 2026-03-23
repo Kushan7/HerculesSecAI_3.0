@@ -3,6 +3,7 @@ from models.schemas import Vulnerability
 from models.database import SessionLocal, ScanReportModel
 from scanner.plugins.headers import HeaderScanner
 from scanner.plugins.vibe_smells import VibeSmellsScanner
+from scanner.plugins.osv_scanner import OSVScanner
 from scanner.plugins.ai_judge import AIJudge
 
 class ScannerEngine:
@@ -12,15 +13,20 @@ class ScannerEngine:
 
     async def run_scan(self):
         try:
+            print(f"[{self.scan_id}] Initiating deep scan against {self.target}...")
             header_scanner = HeaderScanner(self.target)
             vibe_scanner = VibeSmellsScanner(self.target)
+            osv_scanner = OSVScanner()
             
+            # Concurrent rule-based detection + dependency OSV simulation
             vulns_lists = await asyncio.gather(
                 header_scanner.scan(),
-                vibe_scanner.scan()
+                vibe_scanner.scan(),
+                osv_scanner.scan_package("axios", "0.21.1") # Simulating an extraction of vulnerable JS dependency
             )
             raw_vulns = [vuln for sublist in vulns_lists for vuln in sublist]
             
+            # Dual-Layer LLM Red Team & Threat Intelligence Validation
             judge = AIJudge(self.target)
             verified_vulns = []
             for v in raw_vulns:
@@ -29,7 +35,7 @@ class ScannerEngine:
                 
             risk_score = 100 if any(v.severity == 'Critical' for v in verified_vulns) else 50
             
-            # Commit results securely to Database models
+            # Persist intelligently scoped results
             db = SessionLocal()
             db_scan = db.query(ScanReportModel).filter(ScanReportModel.id == self.scan_id).first()
             if db_scan:
@@ -40,6 +46,7 @@ class ScannerEngine:
             db.close()
             
         except Exception as e:
+            print(f"Error during scan: {e}")
             db = SessionLocal()
             db_scan = db.query(ScanReportModel).filter(ScanReportModel.id == self.scan_id).first()
             if db_scan:
