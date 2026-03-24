@@ -1,11 +1,69 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Header
 from models.schemas import ScanRequest, ScanReport, Vulnerability
 from scanner.engine import ScannerEngine
 from models.database import SessionLocal, ScanReportModel
 import uuid
 from datetime import datetime
+import httpx
+import os
+from pydantic import BaseModel
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter()
+
+class OAuthRequest(BaseModel):
+    code: str
+
+@router.post("/auth/github")
+async def github_auth(req: OAuthRequest):
+    client_id = os.getenv("GITHUB_CLIENT_ID")
+    client_secret = os.getenv("GITHUB_CLIENT_SECRET")
+    
+    async with httpx.AsyncClient() as client:
+        token_res = await client.post(
+            "https://github.com/login/oauth/access_token",
+            headers={"Accept": "application/json"},
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": req.code
+            }
+        )
+        token_data = token_res.json()
+        access_token = token_data.get("access_token")
+        
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Invalid OAuth code returned from provider.")
+            
+        user_res = await client.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        user_data = user_res.json()
+        
+        return {
+            "token": access_token,
+            "username": user_data.get("login"),
+            "avatar": user_data.get("avatar_url")
+        }
+
+@router.get("/github/repos")
+async def get_github_repos(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized session state.")
+        
+    token = authorization.split(" ")[1]
+    async with httpx.AsyncClient() as client:
+        res = await client.get(
+            "https://api.github.com/user/repos?sort=updated&per_page=100",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+        )
+        if res.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to hook user repository list.")
+        repos = res.json()
+        return [{"name": r["full_name"], "private": r["private"], "url": r["html_url"]} for r in repos]
 
 @router.post("/scan", response_model=ScanReport)
 async def submit_scan(request: ScanRequest, background_tasks: BackgroundTasks):
