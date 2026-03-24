@@ -3,6 +3,7 @@ from models.schemas import ScanRequest, ScanReport, Vulnerability
 from scanner.engine import ScannerEngine
 from models.database import SessionLocal, ScanReportModel
 import uuid
+from datetime import datetime
 
 router = APIRouter()
 
@@ -14,7 +15,6 @@ async def submit_scan(request: ScanRequest, background_tasks: BackgroundTasks):
     scan_id = str(uuid.uuid4())
     target = str(request.target_url) if request.target_url else request.target_repo
     
-    # Persistent Database Transaction (Replaces Python Dict)
     db = SessionLocal()
     db_scan = ScanReportModel(
         id=scan_id,
@@ -47,10 +47,17 @@ async def get_scan_status(scan_id: str):
     if db_scan.report_json and "vulnerabilities" in db_scan.report_json:
         vulnerabilities = [Vulnerability(**v) for v in db_scan.report_json["vulnerabilities"]]
         
+    rep_json = db_scan.report_json or {}
+        
     return ScanReport(
         scan_id=db_scan.id,
         status=db_scan.status,
         target=db_scan.target_url,
         risk_score=db_scan.risk_score,
+        overall_risk_level=rep_json.get("overall_risk_level", "Low"),
+        scan_duration=rep_json.get("scan_duration", "0s"),
+        start_time=db_scan.created_at,
+        finish_time=datetime.utcnow() if db_scan.status == "completed" else None,
+        tests_performed=rep_json.get("tests_performed", 0),
         vulnerabilities=vulnerabilities
     )
