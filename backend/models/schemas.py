@@ -32,4 +32,7 @@ class ScanReport(BaseModel):
     start_time: Optional[datetime] = None
     finish_time: Optional[datetime] = None
     tests_performed: Optional[int] = 0
+    integrity: Optional[str] = "100%"
+    latency: Optional[str] = "0ms"
+    resilience: Optional[str] = "High"
     vulnerabilities: List[Vulnerability] = []

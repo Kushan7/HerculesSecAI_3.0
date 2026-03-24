@@ -117,5 +117,8 @@ async def get_scan_status(scan_id: str):
         start_time=db_scan.created_at,
         finish_time=datetime.utcnow() if db_scan.status == "completed" else None,
         tests_performed=rep_json.get("tests_performed", 0),
+        integrity=rep_json.get("integrity", "100.0%"),
+        latency=rep_json.get("latency", "0ms"),
+        resilience=rep_json.get("resilience", "High"),
         vulnerabilities=vulnerabilities
     )
