@@ -5,6 +5,7 @@ import ora from 'ora';
 import axios from 'axios';
 import Table from 'cli-table3';
 import fs from 'fs';
+import inquirer from 'inquirer';
 
 const program = new Command();
 
@@ -21,17 +22,18 @@ program.command('scan')
     
     let target = options.target;
     if (!target) {
-        if (fs.existsSync('package.json')) {
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            target = pkg.name || 'local-vibe-project';
-            console.log(chalk.dim(`Detected local vibe-environment schema: ${chalk.white(target)}`));
-            console.log(chalk.dim(`Extracting ${Object.keys(pkg.dependencies || {}).length} immediate dependencies for OSV analysis.\n`));
-        } else {
-            target = 'local-vibe-project';
-        }
+        const answers = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'targetUrl',
+                message: 'Enter the target URL or GitHub repository to scan:',
+                validate: input => input.trim() !== '' ? true : 'Please enter a valid target.'
+            }
+        ]);
+        target = answers.targetUrl.trim();
     }
 
-    const spinner = ora('Engaging AI Dual-Layer Scanning Engine & Intelligence Plugins...').start();
+    const spinner = ora(`Engaging AI Dual-Layer Scanning Engine on ${chalk.white(target)}...`).start();
 
     try {
         const API_URL = process.env.HERCULES_API || 'http://localhost:8000/api/scan';
