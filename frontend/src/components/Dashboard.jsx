@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { FileDown, ChevronDown, ChevronUp, Flag, ShieldAlert, CheckCircle, RefreshCw } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function Dashboard({ result, onNewScan }) {
   const [expandedVulns, setExpandedVulns] = useState({});
@@ -145,10 +147,14 @@ export default function Dashboard({ result, onNewScan }) {
           {expandedVulns[vuln.id] && (
             <div className="find-details-area">
               <div className="find-section-title">Risk Description:</div>
-              <p style={{ marginBottom: '1.5rem' }}>{vuln.description}</p>
+              <div className="markdown-body">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{vuln.description}</ReactMarkdown>
+              </div>
 
               <div className="find-section-title">Recommendation:</div>
-              <p style={{ marginBottom: '1.5rem' }}>{vuln.remediation}</p>
+              <div className="markdown-body" style={{ marginBottom: '1.5rem' }}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{vuln.remediation}</ReactMarkdown>
+              </div>
 
               {vuln.secure_code && (
                 <>
@@ -162,8 +168,8 @@ export default function Dashboard({ result, onNewScan }) {
               {vuln.poc && (
                 <>
                   <div className="find-section-title">Proof of Concept:</div>
-                  <div className="code-block" style={{ marginBottom: '1.5rem', color: '#fca5a5' }}>
-                    {vuln.poc}
+                  <div className="markdown-body poc-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{vuln.poc}</ReactMarkdown>
                   </div>
                 </>
               )}
