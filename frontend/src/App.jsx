@@ -18,7 +18,8 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     if (code) {
-      axios.post('http://localhost:8000/api/auth/github', { code })
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      axios.post(`${API_URL}/api/auth/github`, { code })
         .then(res => {
           localStorage.setItem('hercules_user', JSON.stringify(res.data));
           localStorage.setItem('hercules_token', res.data.token);

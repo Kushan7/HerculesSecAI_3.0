@@ -14,8 +14,9 @@ export default function ScanForm({ onScanComplete, user }) {
   useEffect(() => {
     if (user) {
       const token = localStorage.getItem('hercules_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       // Fetch private repositories from GitHub APIs securely via FastAPI proxy
-      axios.get('http://localhost:8000/api/github/repos', {
+      axios.get(`${API_URL}/api/github/repos`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => setRepos(res.data))
@@ -35,14 +36,15 @@ export default function ScanForm({ onScanComplete, user }) {
     setIsScanning(true);
     setError(null);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const payload = url.includes('/') && !url.startsWith('http') ? { target_repo: url } : { target_url: url };
-      const initRes = await axios.post('http://localhost:8000/api/scan', payload);
+      const initRes = await axios.post(`${API_URL}/api/scan`, payload);
       const scanId = initRes.data.scan_id;
       
       let finalResult = null;
       for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 2000));
-        const pollRes = await axios.get(`http://localhost:8000/api/scan/${scanId}`);
+        const pollRes = await axios.get(`${API_URL}/api/scan/${scanId}`);
         if (pollRes.data.status === 'completed' || pollRes.data.status === 'failed') {
           finalResult = pollRes.data;
           break;
