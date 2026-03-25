@@ -6,6 +6,7 @@ from scanner.plugins.headers import HeaderScanner
 from scanner.plugins.vibe_smells import VibeSmellsScanner
 from scanner.plugins.osv_scanner import OSVScanner
 from scanner.plugins.ai_judge import AIJudge
+from scanner.plugins.osint_recon import OSINTReconModule
 
 class ScannerEngine:
     def __init__(self, scan_id: str, target: str):
@@ -19,14 +20,19 @@ class ScannerEngine:
             header_scanner = HeaderScanner(self.target)
             vibe_scanner = VibeSmellsScanner(self.target)
             osv_scanner = OSVScanner()
+            osint_module = OSINTReconModule(self.target)
             
-            # Concurrent rule-based detection + dependency OSV simulation
-            vulns_lists = await asyncio.gather(
+            # Concurrent rule-based detection + OSINT
+            results = await asyncio.gather(
                 header_scanner.scan(),
                 vibe_scanner.scan(),
-                osv_scanner.scan_package("axios", "0.21.1")
+                osv_scanner.scan_package("axios", "0.21.1"),
+                osint_module.gather_subdomains(),
+                osint_module.scrape_target()
             )
-            raw_vulns = [vuln for sublist in vulns_lists for vuln in sublist]
+            raw_vulns = [vuln for sublist in results[:3] for vuln in sublist]
+            subdomains = results[3]
+            scraped_intel = results[4]
             
             # Dual-Layer LLM Red Team & Threat Intelligence Validation
             judge = AIJudge(self.target)
@@ -51,7 +57,7 @@ class ScannerEngine:
             elif low_count > 0: overall_risk = "Low"
             
             duration = f"{int(time.time() - start_time)} sec"
-            tests_performed = len(vulns_lists) * 15 # Statistical mapping
+            tests_performed = len(raw_vulns) * 15 # Statistical mapping
             
             integrity_val = max(0.0, 100.0 - (risk_score * 0.1))
             integrity_str = f"{integrity_val:.1f}%"
@@ -68,6 +74,8 @@ class ScannerEngine:
                 db_scan.risk_score = risk_score
                 db_scan.report_json = {
                     "vulnerabilities": [v.dict() for v in verified_vulns],
+                    "discovered_subdomains": subdomains,
+                    "scraped_intel": scraped_intel,
                     "overall_risk_level": overall_risk,
                     "scan_duration": duration,
                     "tests_performed": tests_performed,

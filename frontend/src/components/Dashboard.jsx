@@ -111,6 +111,59 @@ export default function Dashboard({ result, onNewScan }) {
         </div>
       </div>
 
+      {/* OSINT RECONNAISSANCE SECTION */}
+      {(result.discovered_subdomains?.length > 0 || result.scraped_intel?.length > 0) && (
+        <div className="w-full mt-4 mb-16">
+          <div className="flex items-center mb-6 border-b border-white/10 pb-4">
+             <h2 className="text-lg tracking-[0.3em] font-light text-white/80 uppercase">
+               OSINT Reconnaissance
+             </h2>
+             <span className="ml-4 bg-energy/20 text-energy text-xs px-3 py-1 rounded-full border border-energy/30">
+               Live DOM Analysis
+             </span>
+          </div>
+          
+          <div className="flex flex-col lg:flex-row gap-8 w-full">
+            {/* SUBDOMAIN MATRIX */}
+            {result.discovered_subdomains?.length > 0 && (
+              <div className="flex-1 glass-morphism rounded-3xl p-8 flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[10px] tracking-[0.5em] uppercase text-gold/60 font-bold">Subdomain Matrix</h3>
+                  <span className="text-xs text-white/50">{result.discovered_subdomains.length} Nodes Discovered</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-64 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {result.discovered_subdomains.map((sub, i) => (
+                    <div key={i} className="flex items-center space-x-3 bg-white/5 px-4 py-3 rounded-xl border border-white/5 hover:border-gold/30 hover:bg-white/10 transition-colors cursor-default">
+                      <div className="w-2 h-2 rounded-full bg-energy/60 animate-pulse"></div>
+                      <span className="text-sm font-mono text-white/70 truncate" title={sub}>{sub}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* SCRAPED INTEL TERMINAL */}
+            {result.scraped_intel?.length > 0 && (
+              <div className="w-full lg:w-1/3 glass-morphism rounded-3xl p-8 flex flex-col bg-black/40 border border-white/5 relative overflow-hidden">
+                <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-energy/10 via-energy/50 to-energy/10"></div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[10px] tracking-[0.5em] uppercase text-energy/80 font-bold">Scraped Intel</h3>
+                  <span className="w-2 h-2 rounded-full bg-energy animate-pulse"></span>
+                </div>
+                <div className="flex-1 max-h-64 overflow-y-auto space-y-3 pr-4 scrollbar-thin scrollbar-thumb-energy/30 scrollbar-track-transparent font-mono text-xs">
+                  {result.scraped_intel.map((intel, i) => (
+                    <div key={i} className="flex space-x-3 text-white/80 border-b border-white/5 pb-3">
+                      <span className="text-energy font-bold mt-0.5">❯</span>
+                      <span className="break-words leading-relaxed text-white/60">{intel}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* FINDINGS SECTION */}
       <div className="w-full mt-12">
         <div className="flex items-center mb-8 border-b border-white/10 pb-4">

@@ -35,4 +35,6 @@ class ScanReport(BaseModel):
     integrity: Optional[str] = "100%"
     latency: Optional[str] = "0ms"
     resilience: Optional[str] = "High"
+    discovered_subdomains: List[str] = []
+    scraped_intel: List[str] = []
     vulnerabilities: List[Vulnerability] = []

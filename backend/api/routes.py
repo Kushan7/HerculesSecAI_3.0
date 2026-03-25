@@ -120,5 +120,7 @@ async def get_scan_status(scan_id: str):
         integrity=rep_json.get("integrity", "100.0%"),
         latency=rep_json.get("latency", "0ms"),
         resilience=rep_json.get("resilience", "High"),
+        discovered_subdomains=rep_json.get("discovered_subdomains", []),
+        scraped_intel=rep_json.get("scraped_intel", []),
         vulnerabilities=vulnerabilities
     )
